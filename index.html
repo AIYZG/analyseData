@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>芯片测试数据分析2.0</title>
+</head>
+<!-- <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script> -->
+<script src="xlsx.full.min.js"></script>
+<script src="echarts.min.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script> -->
+
+<body>
+    <div class="main">
+        <div class="file-hand">
+            <div class="chip-choose content">
+                <span>选择芯片:</span>
+                <select id="mySelect", class="select" aria-placeholder="请选择芯片">
+                    <option value="CM01">CM01</option>
+                    <option value="CM03">CM03</option>
+                    <option value="CM06">CM06</option>
+                    <option value="CM11">CM11</option>
+                    <option value="CM65">CM65</option>
+                    <option value="CM30">CM30</option>
+                </select>
+            </div>
+            <form>
+                <div class="content">
+                    <span>选择文件:</span>
+                    <!-- <div class="uploadButton button" onclick=multiUploadExcel()>批量上传</div> -->
+                    <div class="uploadButton button" onclick=uploadExcel()>上传文件</div>
+                    <span id="file-name"></span>
+                </div>
+                <div class="content">
+                  <div id="item" class="item content" style="display: none;">
+                    <span class="item-span">Item:</span>
+                    <select id="item-select" class="select choose-small" style="width: 120px"></select>
+                  </div>
+                  <div id="other-item" class="content" style="display: none;">
+                    <span id="single-title" class="item-span"></span>
+                    <select id="single-select" class="select choose-small"></select>
+                  </div>
+                </div>
+                <div id="multi-select" style="display: none;">
+                  <span id="multi-title" class="item-span"></span>
+                </div>
+                <div class="choose-select content">
+                    <div id="t-choose" class="choose-select content">
+                        <span class="choose-value">选择温度(℃):</span>
+                        <span class="min-max">min</span>
+                        <select id="min-temperature" class="select choose-small"></select>
+                        <span class="min-max">max</span>
+                        <select id="max-temperature" class="select choose-small"></select>
+                    </div>
+                    <div id="v-choose" class="choose-select content">
+                        <span class="choose-value choose-small">选择电压(V):</span>
+                        <span class="min-max">min</span>
+                        <select id="min-voltage" class="select choose-small"></select>
+                        <span class="min-max">max</span>
+                        <select id="max-voltage" class="select choose-small"></select>
+                    </div>
+                </div>
+            </form>  
+        </div>
+        <div class="deviation-input content">
+          <span>σ系数：</span>
+          <select id="singeMa-select" class="select choose-small">
+            <option value='6'>6</option>
+            <option value='4'>4</option>
+            <option value='3'>3</option>
+          </select>
+        </div>
+        <div class="content">
+          <div class="uploadButton button" onclick=analyseData()>分析数据</div>
+          <div class="uploadButton button" onclick=exportExcel()>导出excel</div>
+        </div>
+        <div class="reasult"  id="table-data" style="display: none;">
+            <h4>数据处理结果：</h4>
+            <div class="table-mean">
+              <table id="mean-table">
+                <tr>
+                  <td id="vdd-td">VDD</td>
+                </tr>
+                <tr>
+                  <td id="mean-td" class="value-title">mean</td>
+                </tr>
+                <tr>
+                  <td id="singe-td">σ</td>
+                </tr>
+              </table>
+            </div>
+            <table>
+                <tr id="value-table">
+                    <td class="value-title">MIN</td>
+                    <td class="value-title">TYP</td>
+                    <td class="value-title">MAX</td>
+                </tr>
+                <tr>
+                    <td id="min-value">Data 1</td>
+                    <td id="typ-value">Data 2</td>
+                    <td id="max-value">Data 3</td>
+                </tr>
+            </table>
+            <span id="singeMa-value" style="margin-left: 10px;"></span>
+        </div>
+        <div id="chart" style="width: 1200px; height: 500px; display: none;"></div>
+    </div>
+</body>
+<script>
+  let ChipItem = {
+    // 含Item的
+    'CM01': [
+      'OSC_Summary', 'ACMP_PROP_Summary', 'ACMP_TS_Summary', 'ACMP_TS_Summary', 'IDD_Summary', 'OSC_TS_Summary', 'PGA_GAIN_Summary', 'ACMP_GAIN_Summary',
+      'PGA_VOFFSET_Summary', 'POR_Summary', 'PULL_UP&PULL_DOWN_Summary', 'RSIN_Summary', 'VIHVIL_Summary', 'VOHVOL_Summary', "ACMP_VOFFSET_Summary"
+    ],
+    'CM03': [
+      'ACMP_PROP_Summary', 'ACMP_TS_Summary', 'ACMP_VOFFSET_Summary', 'Crystal_Summary', 'OSC_Summary', 'POR_Summary', 'Source_Summary', 'VREFO_Summary'
+    ],
+    'CM06': [
+      'OSC_Summary', 'ACMP_PROP', 'ACMP_TS_Summary', 'ACMP_VOFFSET_Summary',  'DACOP_Summary', 'POR_Summary', 'Tstart_Summary', 'V1P5_Summary', 'VIHVIL_Summary'
+    ],
+    'CM11': [
+      'ACMP_PROP_Summary', 'POR_Summary', 'ACMP_VOFFSET_Summary', 'OSC_Summary'
+    ],
+    'CM65': [
+      'ACMP_PROP_Summary', 'DNL_Summary', 'ACMP_VOFFSET_Summary', 'OSC_Summary', 'INL_Summary', 'IDD_Summary'
+    ],
+    'CM30': [
+      'OSC_Summary', 'ACMP_PROP_Summary', 'ACMP_TS_Summary', 'ACMP_TS_Summary', 'IDD_Summary', 'OSC_TS_Summary', 'PGA_GAIN_Summary', 'ACMP_GAIN_Summary',
+      'PGA_VOFFSET_Summary', 'POR_Summary', 'PULL_UP&PULL_DOWN_Summary', 'RSIN_Summary', 'VIHVIL_Summary', 'VOHVOL_Summary', "ACMP_VOFFSET_Summary", 'VREFO_GAIN_Summary',
+      'VREFO_Summary', 'UPDOWN_Summary', 'VREFOST_Summary','BufferOffset_Summary', 'ChipStartUpTime_Summary', 'OneWire_Summary','VDD_GAIN_Summary'
+    ],
+  }
+  let itemIncludes = ChipItem['CM01'];
+  // 指定图表的配置项和数据
+  let option = {
+    tooltip: {
+      trigger: 'axis',
+      formatter: function (params) {
+        let result = `<div>${params[0]?.name}`;
+        // 假设每两个数据项为一组，分为左右两列
+        for (let i = 0; i < params.length; i += 2) {
+          result += '<div>';
+          // 左列数据
+          result += `<span 
+          style='display:inline-block;margin-right:10px;border-radius:10px;width:10px;height:10px;background-color:${params[i].color};'
+          >
+          </span><span>${params[i].seriesName}: ${params[i].value}</span>`;
+          // 右列数据，检查是否存在
+          if (params[i + 1]) {
+            result += `<span 
+          style='display:inline-block;margin-left:20px;border-radius:10px;width:10px;height:10px;background-color:${params[i + 1].color};'
+          >
+          </span><span style="padding-left: 20px;">${params[i + 1].seriesName}: ${params[i + 1].value}</span>`;
+          }
+          result += '</div>';
+        }
+        result += '</div>';
+        return result;
+  
+        // 自定义tooltip的显示内容
+        // let content = `<div>${params[0]?.name}</div>
+        // <div style='width: 140px'>`;
+        // params.forEach(e => {
+        //   content += `
+        //   <span 
+        //   style='display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${e.color};'
+        //   >
+        //   </span>
+        //   <span>${e.seriesName}</span><span style='float:right;font-weight: bold'>${e.value}</span>
+        //     <br/>`
+        // });
+        // content += `</div>`
+        // return content;
+      },
+    },
+    legend: {
+      data: []
+      // data: ['Email', 'Union Ads', 'Video Ads', 'Direct', 'Search Engine']
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    toolbox: {
+      feature: {
+        saveAsImage: {}
+      }
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      nameLocation: 'middle', // 设置横坐标轴名称位置
+      nameGap: 20, // 设置横坐标轴名称与轴线之间的距离
+      data: []
+      // data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    },
+    yAxis: {
+      type: 'value',
+      splitNumber: 20,
+      nameLocation: 'end',
+      nameGap: 2,
+    },
+    series: [
+      // {
+      //   name: 'Email',
+      //   type: 'line',
+      //   stack: 'Total',
+      //   data: [120, 132, 101, 134, 90, 230, 210]
+      // }
+    ],
+    toolbox: {
+      feature: {
+        dataZoom: {
+          // xAxisIndex: 'none' // 设置为 'none' 表示只缩放横坐标
+        },
+        restore: false, // 还原缩放
+        saveAsImage: {}
+      },
+      top: 20, // 距离容器顶部的距离
+      right: 20, // 距离容器右侧的距离
+    },
+    // dataZoom: [
+    //   {
+    //     type: 'slider', // 缩放条
+    //     yAxisIndex: 0, // 对应纵坐标的索引
+    //     start: 0, // 缩放条开始位置
+    //     end: 100 // 缩放条结束位置
+    //   },
+    //   {
+    //     type: 'inside', // 鼠标滚轮缩放
+    //     yAxisIndex: 0, // 对应纵坐标的索引
+    //     start: 0, // 缩放范围的开始位置
+    //     end: 100 // 缩放范围的结束位置
+    //   }
+    // ]
+  };
+  let vddDatas = []; // 电压列表
+  let tempDatas = []; // 温度列表
+  let itemDatas = [];
+  let multiDatas = []; 
+  let singleDatas = [];
+  let minVoltage = maxVoltage = minTemp = maxTemp = itemValue = ''; // 这些值可能为0
+
+  let chipValueNum = {
+    'CM01': {
+      OSC_Summary: [1, 2, 'Hz'],
+      ACMP_TS_Summary: [3, 3, 'us'],
+      BG_Summary: [4, 4, 'V'],
+      ACMP_GAIN_ERROR_Summary: [5, 5, ''],  //*
+      ACMP_PROP_Summary: [4, 4, 'us'],  //*
+      ACMP_VOFFSET_Summary: [6, 4, 'V'],  //*
+      IDD_Summary: [6, 6, 'uA'],
+      OSC_TS_Summary: [4, 4, 'us'],
+      PGA_GAIN_Summary: [5, 4, ''],  //*
+      PGA_VOFFSET_Summary: [3, 4, 'mV'],  //*
+      POR_Summary: [4, 4, 'V'],
+      "PULL_UP&PULL_DOWN_Summary": [1, 1, 'Ω'],  //*
+      RSIN_Summary: [1, 1, 'Ω'],  //*
+      Tstart_Summary: [2, 3, 'us'],
+      VIHVIL_Summary: [4, 4, 'V'],  //*
+      VOHVOL_Summary: [3, 4, 'V'],  //*
+      VREFO_Summary: [3, 4, 'mV'],  //*
+      VREFO_2X_ERROR_Summary: [5, 5, '']
+    },
+    'CM03': {
+      ACMP_GAIN_ERROR_Summary: [5, 5, ''],  //*
+      ACMP_PROP_Summary: [4, 4, 'us'],  //*
+      ACMP_TS_Summary: [3, 3, 'us'],
+      ACMP_VOFFSET_Summary: [6, 4, 'V'],  //*
+      BG_Summary: [4, 4, 'V'],
+      Crystal_Summary: [3, 3, ''],
+      MACMP_Chopper_CLK_Summary: [4, 4, ''],
+      OSC_Summary: [1, 2, 'Hz'],
+      POR_Summary: [4, 4, 'V'],
+      Source_Summary: [3, 3, ''],
+      VREFO_Summary: [3, 4, 'mV'],  //*
+    },
+    'CM06': {
+      OSC_Summary: [1, 2, 'Hz'],
+      ACMP_PROP: [5, 5, ''],
+      ACMP_TS_Summary: [4, 4, ''],
+      ACMP_VOFFSET_Summary: [6, 4, 'V'],  //*
+      DACOP_Summary: [6, 6, ''],
+      POR_Summary: [4, 4, 'V'],
+      Tstart_Summary: [2, 3, 'us'],
+      V1P5_Summary: [6, 6, ''],
+      BG_Summary: [4, 4, 'V'],
+      VIHVIL_Summary: [4, 4, 'V'],  //*
+    },
+    'CM11': {
+      ACMP_PROP_Summary: [4, 4, ''],
+      ACMP_TS_Summary: [4, 4, ''],
+      ACMP_VOFFSET_Summary: [6, 4, 'V'],  //*
+      BG_Summary: [5, 5, 'V'],
+      CRYSTAL_Summary: [5, 5, ''],
+      OSC_Summary: [1, 2, 'Hz'],
+      POR_Summary: [4, 4, 'V'],
+      Tstart_Summary: [2, 3, 'us'],
+    },
+    'CM65': {
+      ACMP_PROP_Summary: [4, 4, ''],
+      ACMP_TS_Summary: [4, 4, ''],
+      ACMP_VOFFSET_Summary: [6, 4, 'V'],  //*
+      BG_Summary: [5, 5, 'V'],
+      OSC_Summary: [1, 2, 'Hz'],
+      IDD_Summary: [6, 6, 'uA'],
+      INL_Summary: [4, 4, ''],
+      DNL_Summary: [4, 4, ''],
+    },
+    'CM30': {
+      OSC_Summary: [1, 2, 'Hz'],
+      ACMP_TS_Summary: [3, 3, 'us'],
+      BG_Summary: [4, 4, 'V'],
+      ACMP_GAIN_ERROR_Summary: [5, 5, ''],  //*
+      ACMP_PROP_Summary: [4, 4, 'us'],  //*
+      ACMP_VOFFSET_Summary: [6, 4, 'V'],  //*
+      IDD_Summary: [6, 6, 'uA'],
+      OSC_TS_Summary: [4, 4, 'us'],
+      PGA_GAIN_Summary: [5, 4, ''],  //*
+      PGA_VOFFSET_Summary: [3, 4, 'mV'],  //*
+      POR_Summary: [4, 4, 'V'],
+      "PULL_UP&PULL_DOWN_Summary": [1, 1, 'Ω'],  //*
+      RSIN_Summary: [1, 1, 'Ω'],  //*
+      Tstart_Summary: [2, 3, 'us'],
+      VIHVIL_Summary: [4, 4, 'V'],  //*
+      VOHVOL_Summary: [3, 4, 'V'],  //*
+      VREFO_Summary: [3, 4, 'mV'],  //*
+      VREFO_2X_ERROR_Summary: [5, 5, ''],
+      VREFO_GAIN_Summary: [6, 6, '']
+    }
+  }
+  // 前面是mean，后面是σ
+  let valueNum = chipValueNum['CM01'];
+  let fileName = "";
+  let chipName = 'CM01';
+
+  let originalData = [];  //原始数据
+  let columnDatas = [];  //列名
+
+  const echartsDiv = document.getElementById("chart");
+  let chartData = [];
+  let excelData = [];
+  let checkedValues = [];
+  let chipSpecialData = {
+    'CM01': {
+      "ACMP_GAIN_ERROR_Summary": {
+        isMultiCheck: 'Vref'
+      },
+      "ACMP_GAIN_Summary": {
+        isMultiCheck: 'VREF'
+      },
+      "ACMP_PROP_Summary": {
+        isMultiCheck: 'IN-'
+      },
+      "ACMP_VOFFSET_Summary": {
+        isMultiCheck: 'VDD_ACMP(IN-)'
+      },
+      "PGA_GAIN_Summary": {
+        isSingleCheck: 'Gain'
+      },
+      "PGA_VOFFSET_Summary": {
+        isMultiCheck: 'INPUT'
+      },
+      "PULL_UP&PULL_DOWN_Summary": {
+        isMultiCheck: 'PinNO',
+        isSingleCheck: 'RESDesign'
+      },
+      "RSIN_Summary": {
+        isSingleCheck: 'Gain'
+      },
+      "VIHVIL_Summary": {
+        isMultiCheck: 'Pin',
+        isSingleCheck: 'InputMode'
+      },
+      "VOHVOL_Summary": {
+        isMultiCheck: 'PinNO',
+        isSingleCheck: 'OutMode'
+      },
+      "VREFO_Summary": {
+        isMultiCheck: 'Target',
+      }
+    },
+    'CM03': {
+      "ACMP_GAIN_ERROR_Summary": {
+        isMultiCheck: 'Vref'
+      },
+      "ACMP_PROP_Summary": {
+        isMultiCheck: 'IN-'
+      },
+      "ACMP_VOFFSET_Summary": {
+        isMultiCheck: 'VDD_ACMP(IN-)'
+      },
+    },
+    'CM06': {},
+    'CM11': {
+      "ACMP_PROP_Summary": {
+        isMultiCheck: 'IN-'
+      },
+      "ACMP_VOFFSET_Summary": {
+        isMultiCheck: 'VDD_ACMP(IN-)'
+      },
+    },
+    'CM65': {
+      "ACMP_PROP_Summary": {
+        isMultiCheck: 'IN-'
+      },
+      "ACMP_VOFFSET_Summary": {
+        isMultiCheck: 'VDD_ACMP(IN-)'
+      },
+    },
+    'CM30': {
+      "ACMP_GAIN_ERROR_Summary": {
+        isMultiCheck: 'Vref'
+      },
+      "ACMP_GAIN_Summary": {
+        isMultiCheck: 'VREF'
+      },
+      "VDD_GAIN_Summary": {
+        isMultiCheck: 'VREF'
+      },
+      "ACMP_PROP_Summary": {
+        isMultiCheck: 'IN-'
+      },
+      "ACMP_VOFFSET_Summary": {
+        isMultiCheck: 'VDD_ACMP(IN-)'
+      },
+      "PGA_GAIN_Summary": {
+        isSingleCheck: 'Gain'
+      },
+      "PGA_VOFFSET_Summary": {
+        isMultiCheck: 'INPUT'
+      },
+      "PULL_UP&PULL_DOWN_Summary": {
+        isMultiCheck: 'PinNO',
+        isSingleCheck: 'RESDesign'
+      },
+      "RSIN_Summary": {
+        isSingleCheck: 'Gain'
+      },
+      "VIHVIL_Summary": {
+        isMultiCheck: 'Pin',
+        isSingleCheck: 'InputMode'
+      },
+      "VOHVOL_Summary": {
+        isMultiCheck: 'PinNO',
+        isSingleCheck: 'OutMode'
+      }
+    }
+  };
+  let specialData = chipSpecialData['CM01'];
+
+  const itemSelect = document.getElementById("item-select");
+  // itemSelect.addEventListener("change", function() {
+  //   itemValue = itemSelect.value;
+  // });
+
+  const minVoltageSelect = document.getElementById("min-voltage");
+  // minVoltageSelect.addEventListener("change", function() {
+  //   minVoltage = Number(minVoltageSelect.value);
+  // });
+ 
+
+  const chipSelect = document.getElementById("mySelect");
+  // 芯片配置
+  chipSelect.addEventListener("change", function() {
+    chipName =chipSelect.value;
+    itemIncludes = ChipItem[chipName];
+    valueNum = chipValueNum[chipName];
+    specialData = chipSpecialData[chipName];
+    console.log(chipName, "chipName--");
+  });
+
+
+  const maxVoltageSelect = document.getElementById("max-voltage");
+  // maxVoltageSelect.addEventListener("change", function() {
+  //   maxVoltage = Number(maxVoltageSelect.value);
+  // });
+
+
+  const minTempSelect = document.getElementById("min-temperature");
+  // minTempSelect.addEventListener("change", function() {
+  //   minTemp = Number(minTempSelect.value);
+  // });
+
+
+  const maxTempSelect = document.getElementById("max-temperature");
+  // maxTempSelect.addEventListener("change", function() {
+  //   maxTemp = Number(maxTempSelect.value);
+  // });
+
+  const singleSelectValue = document.getElementById("single-select");
+  let singleCheckValue = '';
+
+  function getCheckedValues() {
+    // 获取表单元素
+    const form = document.getElementById('multi-select');
+    // 获取所有名为 'fruit' 的复选框
+    const checkboxes = form.querySelectorAll('input[name="checkbox"]:checked');
+    // 使用 Array 的 map 方法来提取选中的值
+    checkedValues = Array.from(checkboxes).map(checkbox => checkbox.value);
+    // 打印选中的复选框的值
+    singleCheckValue = singleSelectValue.value;
+    itemValue = itemSelect.value;
+    minVoltage = Number(minVoltageSelect.value);
+    maxVoltage = Number(maxVoltageSelect.value);
+    minTemp = Number(minTempSelect.value);
+    maxTemp = Number(maxTempSelect.value);
+    
+  }
+  
+  function analyseData() {
+    getCheckedValues();
+    // console.log(minVoltage, "minVoltage-", maxVoltage, "maxVoltage-", minTemp, "minTemp-", maxTemp, "maxTemp-");
+    if(minVoltage === '' || maxVoltage === '' || minTemp === '' || maxTemp === '') {
+      alert("请选择温度和电压范围");
+    }
+    else if(minVoltage > maxVoltage || minTemp > maxTemp) {
+      alert("温度和电压范围不正确");
+    }
+    else {
+      getAnalyseData();
+    }
+  }
+
+  function getAnalyseData() {
+    //清空表格内容
+    const meanTable = document.getElementById('mean-table')
+    const valueTable = document.getElementById('value-table')
+    meanTable.innerHTML = `<tr><td id="vdd-td">VDD</td></tr>
+                          <tr><td id="mean-td" class="value-title">mean</td></tr>
+                          <tr><td id="singe-td">σ</td></tr>`
+    valueTable.innerHTML = `<td class="value-title">MIN</td>
+                            <td class="value-title">TYP</td>
+                            <td class="value-title">MAX</td>`
+    const min = document.getElementById('min-value')
+    const typ = document.getElementById('typ-value')
+    const max = document.getElementById('max-value')
+    min.innerHTML = ''
+    typ.innerHTML = ''
+    max.innerHTML = ''
+    if(!itemValue && itemIncludes.includes(fileName)) {
+      alert("请选择需要处理的item");
+      return;
+    }
+    if(specialData[fileName]?.isMultiCheck && checkedValues.length == 0) {
+      alert(`请选择需要处理的${specialData[fileName].isMultiCheck}`);
+      return;
+    }
+    if(specialData[fileName]?.isSingleCheck && singleCheckValue === '') {
+      alert(`请选择需要处理的${specialData[fileName].isSingleCheck}`);
+      return;
+    }
+    excelData = [];
+    const TempIndex = columnDatas.indexOf("Temp");
+    const vddIndex = columnDatas.indexOf("VDD");
+    const chipIndex = columnDatas.indexOf("Chip") > -1 ? columnDatas.indexOf("Chip") : columnDatas.indexOf("ChipID");
+    const itemIndex = columnDatas.indexOf('Item');
+    const valueIndex = columnDatas.indexOf('Value');
+    if(minVoltage == maxVoltage) {
+      // 电压相同
+      let tempList = []; //x轴
+      let allData = {};  // echarts渲染的数据
+      let TempObject = {};  // 求值的数据
+      chartData = [columnDatas];
+      originalData.map(e => {
+        const isItem = (itemIncludes.includes(fileName) && e[itemIndex] == itemValue) || !itemValue;
+        let multiFilter = false;
+        let singleFilter = false;
+        if(specialData[fileName]) {
+          const multiKey = specialData[fileName].isMultiCheck;
+          const singleKey = specialData[fileName].isSingleCheck;
+          const multiIndex = columnDatas.indexOf(multiKey);
+          const singleIndex = columnDatas.indexOf(singleKey);
+          if((multiKey && checkedValues.includes(String(e[multiIndex]))) || !multiKey) {
+            multiFilter = true;
+          }
+
+          if((singleKey && e[singleIndex] == singleCheckValue) || !singleKey) {
+            singleFilter = true;
+          }
+          
+        } else {
+          multiFilter = true;
+          singleFilter = true;
+        }
+        if(Number(e[vddIndex]) == minVoltage && Number(e[TempIndex]) >= minTemp && Number(e[TempIndex]) <= maxTemp
+        && isItem && multiFilter && singleFilter) {
+          chartData.push(e);
+          const temp = e[TempIndex]; // 温度
+          if(!TempObject[temp]) TempObject[temp] = [];
+
+          if(!allData[e[chipIndex]]) allData[e[chipIndex]] = {};
+          if (!allData[e[chipIndex]][temp] || allData[e[chipIndex]][temp] < e[valueIndex]) allData[e[chipIndex]][temp] = e[valueIndex];
+
+          if(!tempList.includes(temp)) {
+            tempList.push(temp);
+          }
+
+          TempObject[temp].push(e[valueIndex]);
+        }
+      });
+
+      tempList.sort((a, b) => a - b);
+      // console.log(tempList, "tempList--");
+      // console.log(TempObject, "TempObject--");
+      // console.log(allData, "allData--");
+      createCharts(tempList, allData, '温度(°C)', TempObject);
+      dataCompute(TempObject, 'Temp(°C)');
+    }
+    else {
+      // 温度相同
+      let allData = {};  // echarts渲染的数据
+      let voltList = [];
+      let vddObject = {};  // 求值的数据
+      echartsDiv.style.display = 'none';
+      chartData = [columnDatas];
+
+      originalData.map(e => {
+        const isItem = (itemIncludes.includes(fileName) && e[itemIndex] == itemValue) || !itemValue;
+        let multiFilter = false;
+        let singleFilter = false;
+        if(specialData[fileName]) {
+          const multiKey = specialData[fileName].isMultiCheck;
+          const singleKey = specialData[fileName].isSingleCheck;
+          const multiIndex = columnDatas.indexOf(multiKey);
+          const singleIndex = columnDatas.indexOf(singleKey);
+          if((multiKey && checkedValues.includes(String(e[multiIndex]))) || !multiKey) {
+            multiFilter = true;
+          }
+
+          if((singleKey && e[singleIndex] == singleCheckValue) || !singleKey) {
+            singleFilter = true;
+          }
+          
+        } else {
+          multiFilter = true;
+          singleFilter = true;
+        }
+        if(Number(e[TempIndex]) >= Number(minTemp) && Number(e[TempIndex]) <= Number(maxTemp) && Number(e[vddIndex]) >= Number(minVoltage) && Number(e[vddIndex]) <= Number(maxVoltage) 
+        && isItem && multiFilter && singleFilter) {
+          chartData.push(e);
+          const voltage = e[vddIndex]; // 电压
+          if(!vddObject[voltage]) vddObject[voltage] = [];
+
+          if(!allData[e[chipIndex]]) allData[e[chipIndex]] = {};
+          if (!allData[e[chipIndex]][voltage] || allData[e[chipIndex]][voltage] < e[valueIndex]) allData[e[chipIndex]][voltage] = e[valueIndex];
+
+          if(!voltList.includes(voltage)) {
+            voltList.push(voltage);
+          }
+
+          vddObject[voltage].push(e[valueIndex]);
+        }
+      });
+
+      voltList.sort((a, b) => a - b);
+      if(minTemp == maxTemp) {
+        createCharts(voltList, allData, '电压(V)', vddObject);
+      }
+      dataCompute(vddObject,'VDD(V)');
+      // console.log(allData, "allData");
+      // console.log(vddObject, "vddObject");
+      // console.log(voltList, "voltList--");
+    }
+  }
+
+  var myChart = echarts.init(document.getElementById('chart'));
+
+  myChart.on('legendselectchanged', function(params) {
+      const xAxisData = option.xAxis.data;
+      const selected = params.selected;
+      const objectData = {};
+      option.series?.map(element => {
+        if(selected[element.name]) {
+          for(let i=0; i<xAxisData.length; i++) {
+            if(!objectData[xAxisData[i]]) objectData[xAxisData[i]] = [];
+            objectData[xAxisData[i]].push(element.data[i]);
+          }
+        }
+      });
+
+      const meanTable = document.getElementById('mean-table')
+      const valueTable = document.getElementById('value-table')
+      meanTable.innerHTML = `<tr><td id="vdd-td">VDD</td></tr>
+                            <tr><td id="mean-td" class="value-title">mean</td></tr>
+                            <tr><td id="singe-td">σ</td></tr>`
+      valueTable.innerHTML = `<td class="value-title">MIN</td>
+                              <td class="value-title">TYP</td>
+                              <td class="value-title">MAX</td>`
+      const min = document.getElementById('min-value')
+      const typ = document.getElementById('typ-value')
+      const max = document.getElementById('max-value')
+      min.innerHTML = ''
+      typ.innerHTML = ''
+      max.innerHTML = ''
+      dataCompute(objectData, option.xAxis.name == '温度(°C)' ? 'Temp(°C)' : 'VDD(V)');
+    });
+
+
+  myChart.on('click', function (params) {
+    if (params.componentType === 'series') {
+      var seriesName = params.seriesName;
+      var legend = myChart.getOption().legend[0];
+      var selected = legend.selected || {};
+      selected[seriesName] = !selected[seriesName];
+      myChart.dispatchAction({
+        type: 'legendToggleSelect',
+        name: seriesName
+      });
+    }
+  });
+
+  function createCharts(xAxis, data, xAxisName, objectData) {
+    let allChartData = [];
+    getChartData(xAxis, data, xAxisName);
+    for(let key in objectData) {
+      allChartData = [...allChartData, ...objectData[key]];
+    }
+    echartsDiv.style.display = 'block';
+    
+    myChart.clear();
+    // option.legend.data = xAxis;
+    option.xAxis.data = xAxis;
+    option.xAxis.name = xAxisName;
+    option.yAxis.name = valueNum[fileName][2];
+    option.series = [];
+    option.yAxis.max = Math.max(...allChartData);
+    option.yAxis.min = Math.min(...allChartData);
+    // option.yAxis.max = itemValue ? fileData[fileName][itemValue].max : fileData[fileName].max;
+    // option.yAxis.min = itemValue ? fileData[fileName][itemValue].min : fileData[fileName].min;
+
+    for(let key in data) {
+      const dataList = [];
+      option.legend.data.push(key);
+      for(let i = 0; i < xAxis.length; i++) {
+        dataList.push(data[key][xAxis[i]]);
+      }
+      option.series.push({
+        name: key,
+        type: 'line',
+        data: dataList
+      })
+    }
+
+    // 使用刚指定的配置项和数据显示图表
+    myChart.setOption(option);
+  }
+
+  // 处理需要导出的图表数据
+  function getChartData(xAxis, data, xAxisName) {
+    excelData = [[xAxisName, ...Object.keys(data)]]
+    xAxis.map(e => {
+      // e为温度或电压
+      const rowData = [e];
+      Object.keys(data).forEach(el => {
+        // el为chipId
+        rowData.push(data[el][e]);
+      });
+      excelData.push(rowData);
+    });
+  }
+
+  // 导出excel
+  function exportExcel() {
+
+    // 创建一个工作簿
+    const workbook = XLSX.utils.book_new();
+
+    // 创建一个工作表
+    const worksheet = XLSX.utils.aoa_to_sheet(chartData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+    if(excelData.length > 0) {
+      const worksheet2 = XLSX.utils.aoa_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(workbook, worksheet2, 'Sheet2');
+    }
+
+    // XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet2');
+
+    // var sheets = workbook.SheetNames;
+    // sheets[0] = 'sheet名';
+    // workbook.SheetNames = sheets;
+
+    // 导出工作簿为Excel文件
+    XLSX.writeFile(workbook, 'data.xlsx');
+  }
+
+  function multiUploadExcel() {
+    try {
+      // 选择多个文本文件并上传
+      const fileSelector = document.createElement('input');
+      fileSelector.setAttribute('type', 'file');
+      fileSelector.setAttribute('multiple', 'multiple');
+      fileSelector.setAttribute('webkitdirectory', 'webkitdirectory');
+      fileSelector.setAttribute('directory', 'directory');
+      fileSelector.addEventListener('change', handleFileSelect, false);
+      fileSelector.click();
+
+      // 处理文件选择事件
+      function handleFileSelect(event) {
+        const files = event.target.files;
+        // 遍历选择的每个文件
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const fileName = getFileName(file);
+          if(file.type === 'application/vnd.ms-excel' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+            const reader = new FileReader();
+        
+          reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            // 读取 Excel 文件内容
+            const workbook = XLSX.read(data, { type: 'array' });
+            analyseExcel(workbook, fileName);
+          };
+          
+          reader.readAsArrayBuffer(file);
+          }
+        }
+
+      }
+    } catch (error) {
+      // 处理错误的代码
+      console.log("发生错误: " + error.message);
+      alert('文件上传错误！')
+    }
+  }
+
+  // 上传excel
+  function uploadExcel() {
+    try {
+      // 上次文件前，先清空之前的残留数据
+      clearSelect("min-voltage");
+      clearSelect("max-voltage");
+      clearSelect("min-temperature");
+      clearSelect("max-temperature");
+      clearSelect("item-select");
+      minVoltage = maxVoltage = minTemp = maxTemp = itemValue = singleCheckValue = '';
+      checkedValues = [];
+      singleDatas = [];
+      multiDatas = []; 
+      //表格隐藏
+      const tableData = document.getElementById('table-data')
+      const echartsDiv = document.getElementById("chart");
+      const itemSelect = document.getElementById('item')
+      const multiSelect = document.getElementById('multi-select');
+      const otherItem = document.getElementById('other-item');
+      const singleSelect = document.getElementById('single-select');
+
+      tableData.style.display = 'none';
+      echartsDiv.style.display = 'none';
+      itemSelect.style.display = 'none';
+      multiSelect.style.display = 'none';
+      multiSelect.innerHTML = `<span id="multi-title" class="item-span"></span>`
+      otherItem.style.display = 'none';
+      singleSelect.innerHTML = ''
+
+      let inputElement = document.createElement("input");
+      inputElement.setAttribute("type", "file");
+      inputElement.setAttribute("id", "excelFile");
+      inputElement.setAttribute("accept", ".xlsx, .xls");
+      inputElement.addEventListener('change', handleFileSelect, false);
+      inputElement.click();
+
+      function handleFileSelect(event) {
+        const file = inputElement.files[0];
+        fileName = getFileName(file);
+        if(!valueNum[fileName]){
+          valueNum[fileName] = [5, 5, '']
+        }
+        const spanHtml = document.getElementById("file-name");
+        if(itemIncludes.includes(fileName)) {
+          itemSelect.style.display = 'flex';
+        } else {
+          itemSelect.style.display = 'none';
+        }
+        spanHtml.innerText = file.name;
+        // 其他item的显示和渲染
+        if(specialData[fileName]?.isMultiCheck) {
+          multiSelect.style.display = 'flex';
+          const multiTitle = document.getElementById('multi-title');
+          multiTitle.innerText = specialData[fileName]?.isMultiCheck + `:`
+        }
+        if(specialData[fileName]?.isSingleCheck) {
+          otherItem.style.display = 'flex';
+          const singleTitle = document.getElementById('single-title');
+          singleTitle.innerText = specialData[fileName]?.isSingleCheck + `:`
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+          const data = new Uint8Array(e.target.result);
+          // 读取 Excel 文件内容
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          analyseExcel(workbook, fileName);
+        };
+        
+        reader.readAsArrayBuffer(file);
+      }
+    } catch (error) {
+      // 处理错误的代码
+      console.log("发生错误: " + error.message);
+      alert('文件上传错误！')
+    }
+  }
+
+  function analyseExcel(workbook, fileName) {
+      vddDatas = [];
+      tempDatas = [];
+      itemDatas = [];
+      originalData = [];
+      columnDatas = [];
+      multiSelect = [];
+      singleSelect = [];
+
+      // excel数据分析
+      const worksheet = workbook.Sheets['data'];
+      if(worksheet) {
+        console.log(fileName, "fileName");
+        // 将工作表转换为 JSON 格式的数据
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        originalData = jsonData;
+
+        // jsonData是excel data页全部数据
+        columnDatas = jsonData.shift();
+        let tempIndex = columnDatas.indexOf('Temp');
+        let vddIndex = columnDatas.indexOf('VDD');
+        let itemIndex = columnDatas.indexOf('Item');
+        let multiIndex = columnDatas.indexOf(specialData[fileName]?.isMultiCheck)
+        let singleIndex = columnDatas.indexOf(specialData[fileName]?.isSingleCheck)
+        jsonData.map(e => {
+          if(!vddDatas.includes(e[vddIndex])) {
+            vddDatas.push(e[vddIndex]);
+          }
+          if(!tempDatas.includes(e[tempIndex])) {
+            tempDatas.push(e[tempIndex]);
+          }
+          if(!itemDatas.includes(e[itemIndex]) && itemIncludes.includes(fileName)) {
+            itemDatas.push(e[itemIndex]);
+          }
+          if(!multiDatas.includes(e[multiIndex]) && specialData[fileName]?.isMultiCheck) {
+            multiDatas.push(e[multiIndex]);
+          }
+          if(!singleDatas.includes(e[singleIndex]) && specialData[fileName]?.isSingleCheck) {
+            singleDatas.push(e[singleIndex]);
+          }
+        });
+        // 按升序排序
+        vddDatas.sort((a, b) => a - b);
+        tempDatas.sort((a, b) => a - b);
+        setOption("min-voltage", vddDatas);
+        setOption("max-voltage", vddDatas);
+        setOption("min-temperature", tempDatas);
+        setOption("max-temperature", tempDatas);
+        setOption("item-select", itemDatas);
+        let checkboxContainer = document.getElementById('multi-select');
+        multiDatas.map((c, i) => {
+          let checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = c;
+          checkbox.name = 'checkbox';
+          checkbox.value = c;
+          checkbox.className = "checkbox-item";
+
+          let label = document.createElement("label");
+          label.htmlFor = c;
+          label.appendChild(document.createTextNode(c));
+
+          checkboxContainer.appendChild(checkbox);
+          checkboxContainer.appendChild(label);
+          })
+          singleDatas && setOption("single-select", singleDatas);
+      }
+  }
+
+  function getFileName(file) {
+    // 获取文件名
+    const fileName = file.name;
+    const lastDotIndex = fileName.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      // 文件名中没有点号，返回原始文件名
+      return fileName;
+    } else {
+      // 返回文件名中最后一个点号之前的部分
+      return fileName.substring(0, lastDotIndex);
+    }
+  }
+
+  function setOption(contentId, optionList) {
+    let liItems = optionList.map((e) => `<option value="${e}">${e}</option>`).join('');
+    const content = document.getElementById(contentId);
+    liItems = '<option value="" disabled selected hidden></option>' + liItems;
+    content.innerHTML = liItems;
+  }
+
+  function clearSelect(selectId) {
+    // 清空下拉框选择
+    const selectElement = document.getElementById(selectId);
+    selectElement.selectedIndex = -1;
+  }
+
+  // 几何平均值
+  function geometricMean(arr) {
+
+    const hasZeroOrNegative = arr.some(num => num <= 0);
+    if(hasZeroOrNegative) {
+      // 算数平均值
+      const sum = arr.reduce((total, num) => total + num, 0);
+      const mean = sum / arr.length;
+      return mean;
+    }
+
+    const filteredArr = arr.filter(num => num && !isNaN(num)); // 过滤掉空值或没有值的数据
+    const logSum = filteredArr.reduce((sum, num) => sum + Math.log(num), 0);
+    const mean = Math.exp(logSum / filteredArr.length);
+    return mean;
+  }
+
+  // 标准偏差
+  function standardDeviation(arr) {
+    const numbers = arr.filter(num => num && !isNaN(num));
+    const n = numbers.length;
+
+    // 计算平均值
+    const mean = numbers.reduce((a, b) => a + b, 0) / n;
+    
+    // 计算每个数值与平均值的差的平方和
+    const sqDiff = numbers.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0);
+    
+    // 计算样本标准差，注意是 n-1（贝塞尔校正）
+    const stdDev = Math.sqrt(sqDiff / (n - 1));
+    
+    return stdDev;
+  }
+
+  function addNewTD(name, list){
+    list.forEach(v => {
+      const itemTd = document.getElementById(name);
+      const itemTm = document.createElement('td')
+      if(name === 'mean-td') {
+        itemTm.textContent = v.toFixed(valueNum[fileName][0])
+      }else if(name === 'singe-td') {
+        itemTm.textContent = v.toFixed(valueNum[fileName][1])
+      }else {
+        itemTm.textContent = v
+      }
+      itemTm.setAttribute('id', 'newId'); 
+      itemTd.insertAdjacentElement('afterend', itemTm);
+    })
+  }
+   
+  function dataCompute (data, flag) {
+    console.log(data, "data");
+    let meanValue = [];
+    let deviationValue = [];
+    let list = [];
+    let singeMaSelect = document.getElementById('singeMa-select');
+    let singeMa = singeMaSelect.value ? Number(singeMaSelect.value) : 6;
+    let singeMaContent = document.getElementById('singeMa-value');
+    singeMaContent.innerHTML = "σ系数：" + singeMa;
+    const table = document.getElementById('table-data')
+    const min = document.getElementById('min-value')
+    const typ = document.getElementById('typ-value')
+    const max = document.getElementById('max-value')
+    const titleValue = document.querySelectorAll('.value-title')
+  
+    titleValue.forEach(t =>{
+      if(valueNum[fileName][2]){
+        t.textContent += `(${valueNum[fileName][2]})`
+      }
+    })
+    table.style.display = 'flex'
+    Object.values(data).forEach(value => {
+      meanValue.push(geometricMean(value))
+      deviationValue.push(standardDeviation(value))
+  });
+    list.push(...Object.keys(data))
+    //平均值和方差绘制
+    const item = document.getElementById('vdd-td');
+    item.innerText = flag
+    addNewTD('vdd-td', list)
+    addNewTD('mean-td', meanValue)
+    addNewTD('singe-td', deviationValue)
+    //typ
+    let sum = 0
+    meanValue.forEach(v=>{ 
+      sum += v
+    })
+    const typValue = sum / meanValue.length
+    typ.innerText = (sum / meanValue.length).toFixed(valueNum[fileName][0])
+    //min
+    let minNumber = Math.min(...meanValue);
+    const minValue = (minNumber - singeMa * Math.min(...deviationValue)).toFixed(valueNum[fileName][0])
+    min.innerText = minValue
+    //max
+    let maxNumber = Math.max(...meanValue);
+    let maxIndex = meanValue.indexOf(maxNumber);
+    const maxValue = (maxNumber + singeMa * Math.max(...deviationValue)).toFixed(valueNum[fileName][0])
+    max.innerText = maxValue
+  }
+  
+</script>
+<style>
+ .select {
+    width:80px;
+    height: 30px;
+    margin: 10px;
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .choose-small{
+    margin-left: 2px;
+  }
+  .content{
+    display: flex;
+    justify-content: left;
+    align-items: center;
+  }
+  .choose-value{
+    margin-right: 5px;
+  }
+  .min-max {
+    font-size: 12px;
+  }
+  #list li span {
+    color: red;
+    font-size: 14px
+  }
+ .item-span {
+  margin-right: 5px;
+  }
+.button {
+  border: 1px solid #ccc;
+  cursor: pointer;
+  width:80px;
+  height: 30px;
+  margin: 10px;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  box-shadow: 2px 2px 2px #ccc;
+}
+table {
+  border-collapse: collapse;
+  margin-left: 10px;
+  font-size: 14px
+}
+td {
+  border: 1px solid black;
+  padding: 6px 20px;
+  font-size: 14px
+}
+.deviation-input{
+  margin-bottom: 10px;
+}
+.input-number{
+  width: 60px;
+}
+.table-mean{
+  max-width: 600px !important;
+  margin-right: 20px;
+  overflow-x: auto; 
+}
+#other-item{
+  margin-left: 20px;
+}
+#multi-select{
+  margin: 5px 0;
+}
+.checkbox-item{
+  margin-left: 15px;
+}
+
+</style>
+</html>
